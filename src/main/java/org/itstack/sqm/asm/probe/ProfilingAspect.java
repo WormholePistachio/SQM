@@ -52,4 +52,13 @@ public final class ProfilingAspect {
         System.out.println("监控 - End\r\n");
     }
 
+    public static void point(final long startNanos, final int methodId, Object[] requests) {
+        MethodTag method = methodTagArr.get(methodId);
+        List<String> parameters = methodParameterGroup.get(methodId);
+        System.out.println("监控 - Begin");
+        System.out.println("方法：" + method.getFullClassName() + "." + method.getMethodName());
+        System.out.println("耗时：" + (System.nanoTime() - startNanos) / 1000000 + "(s)");
+        System.out.println("监控 - End\r\n");
+    }
+
 }

@@ -55,7 +55,7 @@ public class ProfilingClassAdapter extends ClassVisitor {
         MethodVisitor mv = cv.visitMethod(access, name, descriptor, signature, exceptions);
         if (null == mv) return null;
 
-        return new ProfilingMethodVisitor(access, name, descriptor, mv, className, fullClazzName, simpleClassName);
+        return new ProfilingMethodVisitorDemo2(access, name, descriptor, mv, className, fullClazzName, simpleClassName);
     }
 
 }
