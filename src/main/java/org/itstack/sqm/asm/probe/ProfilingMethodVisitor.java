@@ -171,6 +171,7 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
         mv.visitLdcInsn(methodId);
         if (parameterTypeList.isEmpty()) {
             mv.visitInsn(ACONST_NULL);
+            mv.visitTypeInsn(CHECKCAST, Type.getDescriptor(Object.class));
         } else {
             mv.visitVarInsn(ALOAD, parameterIdentifier);
         }
@@ -181,6 +182,8 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
         mv.visitVarInsn(ALOAD, currentLocal);
         mv.visitInsn(ATHROW);
 
+        // 研究下visitFrame api
+        mv.visitFrame(255,0,null,0,null);
         super.visitMaxs(maxStack, maxLocals);
     }
 
@@ -194,6 +197,7 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
             // 判断入参
             if (parameterTypeList.isEmpty()) {
                 mv.visitInsn(ACONST_NULL);
+                mv.visitTypeInsn(CHECKCAST, Type.getDescriptor(Object.class));
             } else {
                 mv.visitVarInsn(ALOAD, parameterIdentifier);
             }
