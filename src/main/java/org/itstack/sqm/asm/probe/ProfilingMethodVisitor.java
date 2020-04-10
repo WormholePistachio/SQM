@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 public class ProfilingMethodVisitor extends AdviceAdapter {
 
     private List<String> parameterTypeList = new ArrayList<>();
+    private int parameterTypeCount = 0;  // 参数个数
     private int startTimeIdentifier; // 启动时间标记
     private int parameterIdentifier; // 入参内容标记
     private int methodId = -1;       // 方法全局唯一标记
@@ -32,6 +33,7 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
         while (matcher.find()) {
             parameterTypeList.add(matcher.group(1));
         }
+        parameterTypeCount = parameterTypeList.size();
         methodId = ProfilingAspect.generateMethodId(new MethodTag(fullClassName, simpleClassName, methodName, desc, parameterTypeList, desc.substring(desc.lastIndexOf(')') + 1)));
     }
 
@@ -92,7 +94,7 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
         // 2. 给数组赋值
         for (int i = 0; i < parameterCount; i++) {
             mv.visitInsn(DUP);
-            if (i > 3) {
+            if (i > 5) {
                 mv.visitVarInsn(BIPUSH, i);
             } else {
                 switch (i) {
@@ -107,6 +109,12 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
                         break;
                     case 3:
                         mv.visitInsn(ICONST_3);
+                        break;
+                    case 4:
+                        mv.visitInsn(ICONST_4);
+                        break;
+                    case 5:
+                        mv.visitInsn(ICONST_5);
                         break;
                 }
             }
@@ -133,10 +141,11 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
             } else if ("J".equals(type)) {
                 mv.visitVarInsn(LLOAD, ++localCount);  //获取对应的参数
                 mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(Long.class), "valueOf", "(J)Ljava/lang/Long;", false);
+                localCount++;
             } else if ("D".equals(type)) {
-                localCount += 2;
-                mv.visitVarInsn(DLOAD, localCount);  //获取对应的参数
+                mv.visitVarInsn(DLOAD, ++localCount);  //获取对应的参数
                 mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(Double.class), "valueOf", "(D)Ljava/lang/Double;", false);
+                localCount++;
             } else {
                 mv.visitVarInsn(ALOAD, ++localCount);  //获取对应的参数
             }
@@ -165,7 +174,7 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
         mv.visitLabel(target);
 
         // 设置visitFrame：mv.visitFrame(Opcodes.F_FULL, 4, new Object[]{"java/lang/String", Opcodes.INTEGER, Opcodes.LONG, "[Ljava/lang/Object;"}, 1, new Object[]{"java/lang/Exception"});
-        int nLocal = (isStaticMethod ? 0 : 1) + parameterTypeList.size() + 2;
+        int nLocal = (isStaticMethod ? 0 : 1) + parameterTypeCount + (parameterTypeCount == 0 ? 1 : 2);
         Object[] localObjs = new Object[nLocal];
         int objIdx = 0;
         if (!isStaticMethod) {
@@ -193,11 +202,14 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
             }
         }
         localObjs[objIdx++] = Opcodes.LONG;
-        localObjs[objIdx] = "[Ljava/lang/Object;";
+        if (parameterTypeCount > 0) {
+            localObjs[objIdx] = "[Ljava/lang/Object;";
+        }
         mv.visitFrame(Opcodes.F_FULL, nLocal, localObjs, 1, new Object[]{"java/lang/Exception"});
 
         // 异常信息保存到局部变量
         int local = newLocal(Type.LONG_TYPE);
+        System.out.println("xxxx:" + local);
         mv.visitVarInsn(ASTORE, local);
 
         // 输出参数
@@ -223,12 +235,14 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
         if ((IRETURN <= opcode && opcode <= RETURN) || opcode == ATHROW) {
             probeMethodReturn(opcode);
             mv.visitVarInsn(LLOAD, startTimeIdentifier);
+            System.out.println("startTimeIdentifier：" + startTimeIdentifier);
             mv.visitLdcInsn(methodId);
             // 判断入参
             if (parameterTypeList.isEmpty()) {
                 mv.visitInsn(ACONST_NULL);
             } else {
                 mv.visitVarInsn(ALOAD, parameterIdentifier);
+                System.out.println("parameterIdentifier：" + parameterIdentifier);
             }
             // 判断出参
             if (RETURN == opcode) {
@@ -239,6 +253,7 @@ public class ProfilingMethodVisitor extends AdviceAdapter {
             } else {
                 mv.visitVarInsn(ALOAD, currentLocal);
             }
+            System.out.println("currentLocal：" + currentLocal);
             mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(ProfilingAspect.class), "point", "(JI[Ljava/lang/Object;Ljava/lang/Object;)V", false);
         }
     }
